@@ -1,0 +1,15 @@
+_export:
+  !include : 'config/input_params.yml'
+  td:
+    database: ${sink_database}
+
++extract_parent_segments_info:   
+    py>: python_files.scan_parent_segments.extract_segment_stats
+    _env:
+      TD_API_KEY: '${secret:secret_key}'
+      TD_API_SERVER: '${api_endpoint}'
+      SINK_DB: '${sink_database}'
+      FOLDER_DEPTH: '${folder_depth}'
+      OUTPUT_TABLE: '${project_prefix}_ps_stats'
+    docker:
+      image: "digdag/digdag-python:3.9"

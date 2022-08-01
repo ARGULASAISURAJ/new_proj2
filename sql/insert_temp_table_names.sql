@@ -1,0 +1,1 @@
+SELECT '${project_prefix}_${table.metric}' as table_name

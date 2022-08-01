@@ -1,0 +1,92 @@
+_export:
+  !include : config/input_params.yml
+  td:
+    database: ${sink_database}
+
++create_temp_table_list:
+  td>: sql/create_temp_table_list.sql
+  create_table: ${project_prefix}_temp_tables
+      
++run_segment_mapping_python_code:
+  call>: segment_analytics_map_segments_to_profiles.dig
+
++create_segment_mapping_table:
+  td>: sql/segments_dashboard_segment_profile_mapping.sql
+  create_table: ${project_prefix}_segment_profile_mapping
+        
+
++segments_dashboard_prep_agg_tables:
+  _parallel: true
+
+  +run_sql_queries:
+    for_each>:
+      table: ${aggregate_metrics_tables}
+    
+    _parallel:
+      limit: 7
+    
+    _do:
+      +check_if_time_filter_needed:
+        if>: ${filters.apply_time_filter == 'no'}
+        _do:
+          +create_agg_table:
+            td>: sql/segments_dashboard_metrics_agg.sql
+            create_table: ${project_prefix}_${table.metric}
+
+        _else_do:
+          +check_time_filter_type:
+            if>: ${filters.time_filter_type == 'TD_INTERVAL'}
+            _do:
+              +create_agg_table_time_filter_interval:
+                td>: sql/segments_dashboard_metrics_agg_time_filter_interval.sql
+                create_table: ${project_prefix}_${table.metric}
+
+            _else_do:
+              +create_agg_table_time_filter_time_range:
+                td>: sql/segments_dashboard_metrics_agg_time_filter_time_range.sql
+                create_table: ${project_prefix}_${table.metric}
+
++segments_dashboard_prep_join_tables:
+
+  +segments_dashboard_metrics_join:
+    td>: sql/segments_dashboard_metrics_join.sql
+    create_table: ${project_prefix}_metrics_join
+ 
+    
+  +run_sql_queries:
+    for_each>:
+      table: ${aggregate_metrics_tables}
+    
+    _do:
+      +load_table:
+        td>: sql/segments_dashboard_metrics_join_others.sql
+        create_table: ${project_prefix}_metrics_join_others
+
+      +insert_name_into_temp_table_list:
+        td>: sql/insert_temp_table_names.sql
+        insert_into: ${project_prefix}_temp_tables
+
+      +rename_temp_table:
+        td_ddl>:
+        rename_tables: [{from: "${project_prefix}_metrics_join_others", to: "${project_prefix}_metrics_join"}]
+
++create_final_metrics_table:
+#Check if any datamodels were built and if history table exists
+  +check_if_metrics_table_exists:
+    td>:
+      data: "SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE REGEXP_LIKE(table_schema, '${sink_database}') AND table_name = '${project_prefix}_final_metrics_table' "
+    store_last_results: true
+
+  +if_table_exists_check_if_model_was_built:
+    if>: ${Object.keys(td.last_results).length != 0}
+    _do:
+      +insert_into_metrics_join_final_table:
+        td>: sql/final_metrics_table.sql
+        insert_into: ${project_prefix}_final_metrics_table
+
+    _else_do:
+      +create_metrics_join_final_table_for_first_time:
+        td>: sql/final_metrics_table_first_run.sql
+        create_table: ${project_prefix}_final_metrics_table
+  
+ 

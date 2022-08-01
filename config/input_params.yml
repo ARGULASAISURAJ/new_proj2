@@ -1,0 +1,114 @@
+#####################################################################
+########################## GLOBAL PARAMS ############################
+#####################################################################
+project_prefix: segment_analytics   #this is added as prefix to the name of all output tables, so user can find them easily in the database
+sink_database: test_dilyan
+unique_user_id: td_canonical_id
+unique_user_id2: cdp_customer_id
+api_endpoint: 'api.treasuredata.com'
+folder_depth: 10
+model_config_table: 'datamodel_build_history'
+
+create_dashboard: 'no'         #'yes' - will trigger datamodel and dashboard build sub-workflow
+cleanup_temp_tables: 'no'       #'yes' - will DELETE all temp_tables not used by final dashboard
+
+#####################################################################
+######################## FILTER PARAMS ##############################
+#####################################################################
+filters:
+  v5_flag: 1, 0                         #'1' - will only scan segments in V5, 0 - only in V4
+  ps_to_include: 'ml_|test'             #use lower letter REGEXP notation to only scan selected Parent Segments that include 'ml_' in their name (leave blank to scan all)
+  folders_to_include: 'rfm|nba|next|test'    #use lower letter REGEXP notation to only scan selected Audience Studio Folders that include 'rfm OR nba OR next' in their name  (leave blank to scan all)
+  segments_to_include:                  #use lower letter REGEXP notation such as 'segment_name|segment_name_2|segment_name_3' to only scan selected Segments (leave blank to scan all)
+  apply_time_filter: 'yes'              #yes - applies time filter to aggregate metrics tables
+  time_filter_type: TD_INTERVAL         #Use TD_TIME_RANGE to specify fixed start/end dates OR 'TD_INTERVAL' to lookback days/weeks/months from now
+  time_range_start_date: 2020-11-01     #Defines start date for`TD_TIME_RANGE` use format YYYY-MM-DD
+  time_range_end_date: 2222-02-02       #To always end TIME_RANGE at the latest available date, leave default as '222-02-02'. To end on a custom date use format YYYY-MM-DD
+  time_interval_start_date: now         #leave default 'now' to start at today's date and lookback using 'lookback period', or change to a custom start_date in YYYY-MM-DD format
+  lookback_period: -20M                 #-1M looksback a month, -30d looks back 30 days, - 2w looksback 2 weeks etc. Used only with TD_INTERVAL
+
+#####################################################################
+############# TABLE PARAMS FOR SOURCE AND OUTPUT TABLES #############
+#####################################################################
+
+aggregate_metrics_tables:
+  - metric: pageviews
+    agg: count
+    agg_col_name: '1'             #We use '1' instead of '*' because in some instances we might want to SUM(agg_col_name)
+    src_db: ml_dev
+    src_table: ucv_tb_pageviews
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter:                     #Add custom 'WHERE' CLAUSE filter if needed
+
+  - metric: ad_clicks
+    agg: count
+    agg_col_name: '1'             
+    src_db: ml_dev
+    src_table: ucv_tb_pageviews
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: WHERE REGEXP_LIKE(lower(td_url), 'utm_')
+
+  - metric: social_clicks
+    agg: count
+    agg_col_name: '1'             
+    src_db: ml_dev
+    src_table: ucv_tb_pageviews
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: WHERE REGEXP_LIKE(lower(td_url), '=social')
+
+  - metric: search_clicks
+    agg: count
+    agg_col_name: '1'             
+    src_db: ml_dev
+    src_table: ucv_tb_pageviews
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: WHERE REGEXP_LIKE(lower(td_url), '=search')
+
+  - metric: cpc_clicks
+    agg: count
+    agg_col_name: '1'             
+    src_db: ml_dev
+    src_table: ucv_tb_pageviews
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: WHERE REGEXP_LIKE(lower(td_url), '=cpc')
+
+  - metric: spend
+    agg: sum
+    agg_col_name: order_value
+    src_db: ml_dev
+    src_table: tb_transactions_mock
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter:
+
+  - metric: orders_count
+    agg: count
+    agg_col_name: '1'
+    src_db: ml_dev
+    src_table: tb_transactions_mock
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: 
+
+  - metric: email_sends
+    agg: count
+    agg_col_name: '1'
+    src_db: ml_dev
+    src_table: tb_email_activity_combined
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: WHERE event_type = 'send'
+
+  - metric: email_opens
+    agg: count
+    agg_col_name: time
+    src_db: ml_dev
+    src_table: tb_email_activity_combined
+    join_key: td_canonical_id
+    unixtime_col: time
+    filter: WHERE event_type = 'open'

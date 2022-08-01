@@ -1,0 +1,3 @@
+SELECT
+segment_query 
+FROM ${project_prefix}_segment_profile_mapping_temp

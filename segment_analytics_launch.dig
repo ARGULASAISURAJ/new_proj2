@@ -1,0 +1,42 @@
+###################### SCHEDULE PARAMS ##################################  
+timezone: UTC
+
+schedule:
+  daily>: 07:00:00
+
+###################### ERROR EMAIL NOTIFICATION ##########################  
+# _error:
+#   mail>: body.txt
+#   subject: Segment Analytics Dashboard Workflow Failed
+#   to: ['ENTER EMAIL OF USER TO GET NOTIFIED VIA EMAIL ON WORKFLOW FAILURE INSIDE THE SINGLE QUOTES']
+
+####################### TRIGGER MAIN PROJECT WORKFLOW #####################################
+_export:
+  !include : config/input_params.yml
+  td:
+    database: ${sink_database}
+
+############## SCAN PARENT SEGMENTS IN TD ACCOUNT ###############################
++extract_ps_stats_table:
+  call>: segment_analytics_scan_parent_segments.dig
+  
+############## PREPARE UCV TABLES FROM SOURCE DATA ###############################
++segment_dashboard_data_prep:
+  call>: segment_analytics_data_prep.dig
+
+############### DATAMODEL BUILDOUT, UPDATE & DELETE WFs ######################################
++check_if_need_to_create_dashboard:
+  if>: ${create_dashboard=='yes'}
+  _do:
+    +run_model_create_wf:
+      call>: segment_analytics_datamodel_create.dig
+
+    +run_model_refresh_build_wf:
+      call>: segment_analytics_datamodel_build.dig
+
+############### CLEANUP TEMP TABLES ######################################
++cleanup_temp_tables:
+  if>: ${cleanup_temp_tables == 'yes'}
+  _do:
+    +run_cleanup_workflow:
+      call>: segment_analytics_cleanup_runner.dig

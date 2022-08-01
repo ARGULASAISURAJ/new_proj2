@@ -1,0 +1,41 @@
+_export:
+  !include : 'config/input_params.yml'
+  td:
+    database: ${sink_database}
+
++create_segment_mapping_temp_tables:
+  td_ddl>:
+  empty_tables: ["${project_prefix}_segment_profile_mapping_temp", "${project_prefix}_run_query"]
+
++create_table_with_filter_segments:
+  td>: sql/filter_segments.sql
+  insert_into: ${project_prefix}_segment_profile_mapping_temp
+
++map_segments_to_profiles:   
+    py>: python_files.map_segments_to_profiles.extract_queries
+    _env:
+      TD_API_KEY: '${secret:secret_key}'
+      TD_API_SERVER: '${api_endpoint}'
+      SINK_DB: '${sink_database}'
+      UNIQUE_ID: '${unique_user_id}'
+      UNIQUE_ID2: '${unique_user_id2}'
+      OUTPUT_TABLE: '${project_prefix}_segment_profile_mapping_temp'
+    docker:
+      image: "digdag/digdag-python:3.9"
+
++segments_dashboard_run_queries:
+  td_for_each>: sql/segments_dashboard_get_query.sql
+
+  _parallel:
+    limit: 80
+
+  _do:
+    +segments_dashboard_run_each_query:
+      td>: sql/segments_dashboard_run_query.sql
+      insert_into: ${project_prefix}_run_query
+
+
+
+
+
+    

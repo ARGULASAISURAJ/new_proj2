@@ -1,0 +1,17 @@
+{
+"model_name":  "Segment_analytics_06_15" 
+,
+"model_tables": [
+  {"db":"test_dilyan","name":"segment_analytics_final_metrics_table"},
+    {"db":"test_dilyan","name":"segment_analytics_ps_stats"}
+                ]
+,
+"shared_user_list": ["dilyan.kovachev+psdemo@treasure-data.com"]
+,
+"change_schema_cols": {"date": ["event_date"], "text": ["ENTER_NAME"], "float": ["ENTER NAME"], "bigint": ["ENTER NAME"]}
+,
+"join_relations": {"pairs":
+[]
+                  }
+}
+

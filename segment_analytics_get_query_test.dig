@@ -1,0 +1,64 @@
+_export:
+  !include : 'config/input_params.yml'
+  td:
+    database: ${sink_database}
+
+
+# +get_segment_id:
+#   td>: sql/get_segment_id.sql
+#   store_last_results: true
+
+# +get_segment_details:
+#   http>: "https://api-cdp.treasuredata.com/audiences/${td.last_results.ps_id}/segments/${td.last_results.segment_id}"
+#   method: GET
+#   headers:
+#   - authorization: "TD1 ${secret:secret_key}"
+#   store_content: true
+
+# +print_response:
+#   echo>: ${http.last_content}
+
+# +get_segment_query:
+#   http>: "https://api-cdp.treasuredata.com/audiences/${td.last_results.ps_id}/segments/query"
+#   method: POST
+#   headers:
+#   - authorization: "TD1 ${secret:secret_key}"
+#   content:
+#     # '{"rule": ${JSON.parse(td.last_results.rule).conditions},"format": "sql"}'
+#     '{"rule": ${JSON.parse(http.last_content).rule},"format": "sql"}'
+#   content_format: text
+#   content_type: application/json
+#   store_content: true
+
+# +print_segment_query:
+#   echo>: ${http.last_content}
+
+# +get_activation_config:
+#   _export:
+#     query: ${JSON.stringify(Object(JSON.parse(http.last_content).sql)).replace(/'/g,"''")}
+
+#   +print_activation_query:
+#     echo>: ${query}
+
+#   td>: queries/parse_query.sql
+#   store_last_results: true
+#   priority: 0
+  
+# +print_activation_query:
+#   echo>: ${td.last_results.query}
+
+# +segments_dashboard_prep_join_agg_tables:
+#   _parallel: true
+
+#   +run_sql_queries:
+#     for_each>:
+#       table: ${segment_aggregate_tables}
+    
+#     _parallel:
+#       limit: 5
+    
+#     _do:
+#       +load_table:
+#         td>: 'sql/segments_dashboard_metrics_join.sql'
+#         create_table: ${table.name}
+
